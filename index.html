@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>هل تخدعنا أعيننا؟</title>
+<style>
+  :root{
+    --bg:#fff8ec; --card:#ffffff; --ink:#2b2d42; --accent:#ef476f; --green:#06a77d;
+    --blue:#118ab2; --yellow:#ffd166; --line:#2b2d42;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:"Segoe UI",Tahoma,"Noto Naskh Arabic",Arial,sans-serif;
+    background:var(--bg); color:var(--ink); min-height:100vh;
+    display:flex; justify-content:center; padding:16px;
+  }
+  .app{width:100%; max-width:560px}
+  h1{font-size:1.5rem; text-align:center; margin:8px 0 4px}
+  .sub{text-align:center; margin:0 0 14px; opacity:.75}
+  .card{background:var(--card); border-radius:20px; padding:16px; box-shadow:0 6px 20px rgba(0,0,0,.08)}
+  svg{width:100%; height:auto; display:block; background:#fffdf7; border-radius:14px; border:2px dashed #eadfc6}
+  .q{font-size:1.25rem; font-weight:700; text-align:center; margin:14px 0 10px}
+  .choices{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+  .choices .wide{grid-column:1 / -1}
+  button{
+    font:inherit; font-size:1.1rem; font-weight:700; padding:14px 10px; border:none; border-radius:14px;
+    background:var(--blue); color:#fff; cursor:pointer; transition:transform .1s, opacity .2s;
+  }
+  button:active{transform:scale(.96)}
+  button.alt{background:var(--yellow); color:var(--ink)}
+  button.green{background:var(--green)}
+  button.red{background:var(--accent)}
+  button:disabled{opacity:.45; cursor:default}
+  .hidden{display:none}
+  .msg{margin-top:14px; padding:14px; border-radius:14px; background:#f1f7fb; line-height:1.9; font-size:1.05rem}
+  .msg.win{background:#e6f7f1}
+  .msg.lose{background:#fdebf0}
+  .big{font-weight:800; font-size:1.2rem}
+  .tools{margin-top:14px; padding-top:14px; border-top:2px dotted #eadfc6}
+  .tools label{display:block; font-weight:700; margin-bottom:6px}
+  input[type=range]{width:100%; accent-color:var(--accent)}
+  .row{display:flex; gap:10px; margin-top:10px}
+  .row button{flex:1}
+  .lesson{margin-top:14px; text-align:center; font-weight:800; font-size:1.15rem; color:var(--accent)}
+  .guide{opacity:0; transition:opacity .6s}
+  .show .guide{opacity:1}
+  .mover{transition:transform 1s ease}
+  .brand{text-align:center; margin:22px 0 8px}
+  .brand-title{font-size:1.4rem; font-weight:800; color:var(--accent)}
+  .brand-name{font-size:1.1rem; font-weight:700; margin-top:4px; opacity:.85}
+  .mute{position:fixed; top:12px; left:12px; width:48px; height:48px; padding:0; border-radius:50%;
+    font-size:1.4rem; background:#fff; box-shadow:0 3px 10px rgba(0,0,0,.15); z-index:10}
+</style>
+</head>
+<body>
+<div class="app">
+  <button class="mute" id="btnMute" aria-label="تشغيل أو إيقاف الصوت">🔊</button>
+  <h1>👀 هل تخدعنا أعيننا؟</h1>
+  <p class="sub">خدعة بصرية مشهورة اسمها «مولر-لاير»</p>
+
+  <div class="card" id="card">
+    <svg id="stage" viewBox="0 0 400 300" aria-label="خطّان عموديان">
+      <!-- خطوط الإرشاد (تظهر عند القياس) -->
+      <g class="guide" id="guides">
+        <line x1="20" x2="380" y1="50" y2="50" stroke="#ef476f" stroke-width="2" stroke-dasharray="6 5"/>
+        <line x1="20" x2="380" y1="250" y2="250" stroke="#ef476f" stroke-width="2" stroke-dasharray="6 5"/>
+        <text x="200" y="152" text-anchor="middle" font-size="22" font-weight="800" fill="#ef476f">= متساويان =</text>
+      </g>
+      <!-- الخط الأيمن: الأسهم للخارج (يبدو أقصر) -->
+      <g id="lineA" stroke="#2b2d42" stroke-width="5" stroke-linecap="round" fill="none">
+        <line x1="290" y1="50" x2="290" y2="250"/>
+        <g id="finsA"></g>
+      </g>
+      <!-- الخط الأيسر: الأسهم للداخل (يبدو أطول) -->
+      <g id="lineB" stroke="#118ab2" stroke-width="5" stroke-linecap="round" fill="none">
+        <line x1="110" y1="50" x2="110" y2="250"/>
+        <g id="finsB"></g>
+      </g>
+    </svg>
+
+    <!-- المرحلة 1: التخمين -->
+    <div id="stepGuess">
+      <div class="q">أيّ الخطّين أطول؟</div>
+      <div class="choices">
+        <button class="alt" data-g="A">الأسود (اليمين)</button>
+        <button class="alt" data-g="B">الأزرق (اليسار)</button>
+        <button class="alt wide" data-g="E">متساويان</button>
+      </div>
+    </div>
+
+    <!-- المرحلة 2: النتيجة -->
+    <div id="stepResult" class="hidden">
+      <div id="verdict" class="msg"></div>
+      <div class="row">
+        <button class="green" id="btnMeasure">📏 قِس بنفسك</button>
+      </div>
+    </div>
+
+    <!-- المرحلة 3: الكشف والتفسير -->
+    <div id="stepReveal" class="hidden">
+      <div class="msg" id="explain">
+        الخطّان <span class="big">متساويان تمامًا</span> في الطول!<br>
+        الأسهم الصغيرة خدعت عينيك، فظنّ دماغك أن أحد الخطّين أبعد من الآخر.
+      </div>
+      <div class="tools">
+        <label for="angle">🎚️ غيّر حجم الأسهم وشاهد الخدعة:</label>
+        <input type="range" id="angle" min="0" max="45" value="30">
+        <div class="row">
+          <button class="red" id="btnNoFins">أزل الأسهم</button>
+          <button class="alt" id="btnSwap">بدّل الأسهم</button>
+        </div>
+      </div>
+      <div class="lesson">لا نصدّق عيوننا دائمًا… بل نتحقّق بالقياس! 📏</div>
+      <div class="row">
+        <button id="btnAgain">🔄 العب من جديد</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="brand">
+    <div class="brand-title">التعلم الممتع</div>
+    <div class="brand-name">سميرة عبد الصّدوق</div>
+  </footer>
+</div>
+
+<script>
+const NS = "http://www.w3.org/2000/svg";
+const xA = 290, xB = 110, yTop = 50, yBot = 250;
+let size = 30, finsVisible = true, swapped = false;
+
+function mk(tag, attrs){
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  return e;
+}
+
+// outward = الأسهم تبتعد عن الخط (V مقلوب في الأعلى)  |  inward = الأسهم تتجه نحو الخط
+function drawFins(group, x, outward){
+  group.innerHTML = "";
+  if (!finsVisible || size === 0) return;
+  const d = size;
+  const sign = outward ? 1 : -1;
+  // الطرف العلوي
+  group.appendChild(mk("line", {x1:x, y1:yTop, x2:x - d, y2:yTop + sign*d}));
+  group.appendChild(mk("line", {x1:x, y1:yTop, x2:x + d, y2:yTop + sign*d}));
+  // الطرف السفلي
+  group.appendChild(mk("line", {x1:x, y1:yBot, x2:x - d, y2:yBot - sign*d}));
+  group.appendChild(mk("line", {x1:x, y1:yBot, x2:x + d, y2:yBot - sign*d}));
+}
+
+function render(){
+  // الأسود (اليمين): أسهم عادية تشير للداخل نحو الخط → يبدو أقصر
+  // الأزرق (اليسار): أسهم مقلوبة → يبدو أطول
+  drawFins(document.getElementById("finsA"), xA, swapped);
+  drawFins(document.getElementById("finsB"), xB, !swapped);
+}
+render();
+
+/* ===== الأصوات (مولَّدة بالمتصفح، دون ملفات خارجية) ===== */
+let muted = false, actx = null, lastTick = 0;
+function ctx(){
+  if (!actx){
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) actx = new AC();
+  }
+  if (actx && actx.state === "suspended") actx.resume();
+  return actx;
+}
+function tone(freq, start, dur, type, vol){
+  if (muted) return;
+  const c = ctx(); if (!c) return;
+  const t = c.currentTime + start;
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = type || "sine"; o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol || 0.25, t + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(c.destination);
+  o.start(t); o.stop(t + dur + 0.05);
+}
+// نقرة خفيفة
+function sndClick(){ tone(660, 0, 0.1, "triangle", 0.2); }
+// إجابة صحيحة: نغمات صاعدة مبهجة
+function sndWin(){
+  [523, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.12, 0.35, "triangle", 0.28));
+  tone(1319, 0.5, 0.5, "sine", 0.2);
+}
+// محاولة لطيفة: نغمتان دافئتان للتشجيع
+function sndTry(){
+  tone(440, 0, 0.25, "sine", 0.25);
+  tone(587, 0.2, 0.4, "sine", 0.25);
+}
+// لحظة الكشف: «تادا!»
+function sndReveal(){
+  tone(392, 0, 0.15, "square", 0.12);
+  tone(523, 0.15, 0.15, "square", 0.12);
+  tone(784, 0.3, 0.6, "triangle", 0.3);
+  tone(1047, 0.3, 0.6, "sine", 0.2);
+}
+// نقرة صغيرة عند تحريك المنزلق
+function sndTick(){
+  const n = Date.now();
+  if (n - lastTick < 90) return;
+  lastTick = n; tone(880, 0, 0.05, "sine", 0.1);
+}
+document.getElementById("btnMute").addEventListener("click", e => {
+  muted = !muted;
+  e.currentTarget.textContent = muted ? "🔇" : "🔊";
+  if (!muted) sndClick();
+});
+
+const show = id => document.getElementById(id).classList.remove("hidden");
+const hide = id => document.getElementById(id).classList.add("hidden");
+
+document.querySelectorAll("[data-g]").forEach(b => {
+  b.addEventListener("click", () => {
+    const g = b.dataset.g;
+    const v = document.getElementById("verdict");
+    hide("stepGuess"); show("stepResult");
+    if (g === "E"){
+      sndWin();
+      v.className = "msg win";
+      v.innerHTML = "🌟 <span class='big'>أحسنت!</span> أنت لم تنخدع بسهولة.<br>لكن هل أنت متأكد؟ تعال نقيسهما معًا.";
+    } else {
+      sndTry();
+      v.className = "msg lose";
+      v.innerHTML = "🤔 كثيرون يظنّون مثلك، فالخدعة قويّة!<br>تعال نقيس الخطّين ونعرف الحقيقة.";
+    }
+  });
+});
+
+document.getElementById("btnMeasure").addEventListener("click", () => {
+  sndReveal();
+  hide("stepResult"); show("stepReveal");
+  document.getElementById("card").classList.add("show");
+});
+
+document.getElementById("angle").addEventListener("input", e => {
+  size = +e.target.value; render(); sndTick();
+});
+document.getElementById("btnNoFins").addEventListener("click", e => {
+  sndClick();
+  finsVisible = !finsVisible;
+  e.target.textContent = finsVisible ? "أزل الأسهم" : "أعد الأسهم";
+  render();
+});
+document.getElementById("btnSwap").addEventListener("click", () => {
+  sndClick(); swapped = !swapped; render();
+});
+document.getElementById("btnAgain").addEventListener("click", () => {
+  sndClick();
+  size = 30; finsVisible = true; swapped = false;
+  document.getElementById("angle").value = 30;
+  document.getElementById("btnNoFins").textContent = "أزل الأسهم";
+  document.getElementById("card").classList.remove("show");
+  hide("stepReveal"); hide("stepResult"); show("stepGuess");
+  render();
+});
+</script>
+</body>
+</html>
